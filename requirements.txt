@@ -22,7 +22,7 @@ python-multipart==0.0.6
 
 # Utilities
 python-dotenv==1.0.0
-httpx==0.25.2
+httpx==0.24.1
 
 # Security
 cryptography==42.0.8
