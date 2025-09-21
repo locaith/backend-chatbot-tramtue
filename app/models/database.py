@@ -93,6 +93,8 @@ class ConversationResponse(BaseModel):
 # Message Models
 class Message(BaseDBModel):
     """Message model"""
+    model_config = {"protected_namespaces": ()}
+    
     conversation_id: str
     role: MessageRole
     content: str
@@ -192,12 +194,16 @@ class DocChunkCreate(BaseModel):
 
 class DocEmbedding(BaseDBModel):
     """Document embedding model"""
+    model_config = {"protected_namespaces": ()}
+    
     chunk_id: str
     embedding: List[float]
     model_name: str
     dimension: int
 
 class DocEmbeddingCreate(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    
     chunk_id: str
     embedding: List[float]
     model_name: str
@@ -280,7 +286,9 @@ class MessagePart(BaseModel):
     delay_ms: int = 0
 
 class ChatResponse(BaseModel):
-    """Chat API response model"""
+    """Chat response model"""
+    model_config = {"protected_namespaces": ()}
+    
     conversation_id: str
     message_id: str
     parts: List[MessagePart]
