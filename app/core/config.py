@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        protected_namespaces = ('settings_',)
 
 class ConfigManager:
     """Quản lý cấu hình và hot-reload"""
