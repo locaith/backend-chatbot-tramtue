@@ -40,6 +40,12 @@ class HandoffReason(str, Enum):
     COMPLEX_COMPLAINT = "complex_complaint"
     ESCALATION_REQUEST = "escalation_request"
 
+class HandoffStatus(str, Enum):
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    RESOLVED = "resolved"
+    CANCELLED = "cancelled"
+
 # Base Models
 class BaseDBModel(BaseModel):
     """Base model cho tất cả database entities"""
@@ -251,6 +257,15 @@ class HandoffCreate(BaseModel):
     description: str
     priority: str = "normal"
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class HandoffRequest(BaseModel):
+    """Handoff request model for orchestrator"""
+    user_id: str
+    conversation_id: str
+    reason: HandoffReason
+    urgency: str = "normal"  # low, normal, high, urgent
+    context: str
+    status: HandoffStatus = HandoffStatus.PENDING
 
 # Metrics Models
 class Metric(BaseDBModel):
