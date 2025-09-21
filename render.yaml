@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: tramtue-chatbot-backend
+    env: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.6
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: ALLOWED_HOSTS
+        value: "*.onrender.com,localhost"
+      # Database
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # AI APIs
+      - key: GEMINI_API_KEY
+        sync: false
+      # Redis (for caching and background tasks)
+      - key: REDIS_URL
+        sync: false
+      # Admin
+      - key: ADMIN_TOKEN
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true
+    
+  # Redis service for caching and background tasks
+  - type: redis
+    name: tramtue-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru

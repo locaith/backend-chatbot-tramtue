@@ -1,0 +1,49 @@
+{
+  "sources": [
+    {
+      "type": "website",
+      "name": "tramtue_official_site",
+      "url": "https://tramtue.com",
+      "crawl_depth": 3,
+      "include_patterns": [
+        "/san-pham/",
+        "/chinh-sach/",
+        "/huong-dan/"
+      ],
+      "exclude_patterns": [
+        "/admin/",
+        "/wp-admin/",
+        "/cart/",
+        "/checkout/"
+      ]
+    },
+    {
+      "type": "file",
+      "name": "internal_playbook",
+      "path": "docx/README-TRAMTUE.md",
+      "description": "300 tình huống CSKH nội bộ"
+    }
+  ],
+  "chunking": {
+    "strategy": "recursive",
+    "chunk_size": 1000,
+    "chunk_overlap": 200,
+    "separators": ["\n\n", "\n", ". ", " "]
+  },
+  "embedding": {
+    "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "dimension": 384,
+    "batch_size": 32
+  },
+  "processing": {
+    "clean_html": true,
+    "remove_extra_whitespace": true,
+    "min_chunk_length": 50,
+    "max_chunk_length": 2000
+  },
+  "storage": {
+    "table_prefix": "rag_",
+    "index_type": "ivfflat",
+    "index_lists": 100
+  }
+}
