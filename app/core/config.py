@@ -6,7 +6,8 @@ import json
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
-from pydantic import BaseSettings, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 import structlog
 
 logger = structlog.get_logger()
