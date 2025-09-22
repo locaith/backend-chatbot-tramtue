@@ -9,7 +9,7 @@ import json
 import asyncio
 
 from app.models.database import *
-from app.core.database import get_db
+from app.core.database import get_db, DatabaseClient
 from app.services.memory import get_memory_engine
 from app.services.discovery import DiscoveryAgent
 from app.services.orchestrator import get_orchestrator

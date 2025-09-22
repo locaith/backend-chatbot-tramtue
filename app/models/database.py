@@ -96,6 +96,11 @@ class ConversationResponse(BaseModel):
     updated_at: datetime
     metadata: Dict[str, Any]
 
+class ConversationStateUpdate(BaseModel):
+    """Conversation state update model"""
+    state: ConversationState
+    metadata: Optional[Dict[str, Any]] = None
+
 # Message Models
 class Message(BaseDBModel):
     """Message model"""
