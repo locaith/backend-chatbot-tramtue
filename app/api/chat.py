@@ -1,7 +1,8 @@
 """
 Chat endpoints cho AI Agent
 """
-from typing import Dict, Any, List, Optional, TYPE_CHECKING
+from __future__ import annotations
+from typing import Dict, Any, List, Optional, Annotated, TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 import structlog
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 @router.post("/conversations", response_model=ConversationResponse)
 async def create_conversation(
     request: ConversationCreate,
-    db = Depends(get_db),
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db),
     request_logger: RequestLogger = Depends()
 ) -> ConversationResponse:
     """Tạo conversation mới"""
@@ -69,7 +70,7 @@ async def create_conversation(
 async def send_message(
     conversation_id: str,
     request: SendMessageRequest,
-    db = Depends(get_db),  # bỏ type annotation để tránh NameError runtime
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db),
     memory_engine = Depends(get_memory_engine),
     logger: RequestLogger = Depends()
 ):
@@ -141,7 +142,7 @@ async def get_messages(
     conversation_id: str,
     limit: int = 50,
     offset: int = 0,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> List[MessageResponse]:
     """Lấy messages của conversation"""
     try:
@@ -173,7 +174,7 @@ async def get_messages(
 @router.get("/conversations/{conversation_id}", response_model=ConversationResponse)
 async def get_conversation(
     conversation_id: str,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> ConversationResponse:
     """Lấy thông tin conversation"""
     try:
@@ -201,7 +202,7 @@ async def get_conversation(
 async def update_conversation_state(
     conversation_id: str,
     request: ConversationStateUpdate,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> Dict[str, Any]:
     """Update conversation state"""
     try:
@@ -226,10 +227,44 @@ async def update_conversation_state(
         logger.error("Failed to update conversation state", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to update conversation state")
 
+@router.get("/users/{user_id}/conversations", response_model=List[ConversationResponse])
+async def get_user_conversations(
+    user_id: str,
+    limit: int = 20,
+    offset: int = 0,
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
+) -> List[ConversationResponse]:
+    """Lấy danh sách conversations của user"""
+    try:
+        user = await db.get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        conversations = await db.get_user_conversations(user_id, limit, offset)
+        
+        return [
+            ConversationResponse(
+                id=conv.id,
+                user_id=conv.user_id,
+                agent_type=conv.agent_type,
+                state=conv.state,
+                created_at=conv.created_at,
+                updated_at=conv.updated_at,
+                metadata=conv.metadata
+            )
+            for conv in conversations
+        ]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get user conversations", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get user conversations")
+
 @router.get("/users/{user_id}/profile")
 async def get_user_profile(
     user_id: str,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> Dict[str, Any]:
     """Lấy user profile từ memory engine"""
     try:
@@ -262,7 +297,7 @@ async def get_user_profile(
 async def create_memory(
     user_id: str,
     request: MemoryCreate,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> Dict[str, Any]:
     """Tạo memory mới cho user"""
     try:
@@ -284,6 +319,30 @@ async def create_memory(
     except Exception as e:
         logger.error("Failed to create memory", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to create memory")
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
+) -> Dict[str, str]:
+    """Delete a conversation"""
+    try:
+        conversation = await db.get_conversation(conversation_id)
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        await db.delete_conversation(conversation_id)
+        
+        return {
+            "success": "true",
+            "message": "Conversation deleted successfully"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to delete conversation", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to delete conversation")
 
 async def process_message_async(conversation_id: str, message_id: str, content: str):
     """Process message asynchronously"""

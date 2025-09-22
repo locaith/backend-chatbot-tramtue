@@ -1,7 +1,8 @@
 """
 Admin endpoints cho management và monitoring
 """
-from typing import Dict, Any, List
+from __future__ import annotations
+from typing import Dict, Any, List, Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import structlog
@@ -11,6 +12,7 @@ from app.core.database import get_db
 from app.services.rag import get_rag_service
 from app.services.memory import get_memory_engine
 from app.core.logging import RequestLogger
+from app.models.database import ConversationState, AgentType
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -62,7 +64,7 @@ async def reload_configurations(
 @router.get("/stats")
 async def get_system_stats(
     admin_token: str = Depends(verify_admin_token),
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> Dict[str, Any]:
     """Lấy system statistics"""
     try:
@@ -98,7 +100,7 @@ async def list_users(
     admin_token: str = Depends(verify_admin_token),
     limit: int = 50,
     offset: int = 0,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> List[Dict[str, Any]]:
     """List users với pagination"""
     try:
@@ -127,7 +129,7 @@ async def list_conversations(
     offset: int = 0,
     state: Optional[ConversationState] = None,
     agent_type: Optional[AgentType] = None,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> List[Dict[str, Any]]:
     """List conversations với filtering"""
     try:
@@ -155,7 +157,7 @@ async def get_metrics(
     admin_token: str = Depends(verify_admin_token),
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> Dict[str, Any]:
     """Lấy metrics và analytics"""
     try:
@@ -217,7 +219,7 @@ async def get_metrics(
 async def reset_user_data(
     user_id: str,
     admin_token: str = Depends(verify_admin_token),
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> Dict[str, Any]:
     """Reset user data (memories, conversations)"""
     try:
@@ -247,7 +249,7 @@ async def reset_user_data(
 async def cleanup_old_data(
     admin_token: str = Depends(verify_admin_token),
     days_old: int = 30,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> Dict[str, Any]:
     """Cleanup old data"""
     try:

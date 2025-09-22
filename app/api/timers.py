@@ -1,12 +1,15 @@
 """
 Timer endpoints cho scheduled tasks
 """
-from typing import Dict, Any, List
+from __future__ import annotations
+from typing import Dict, Any, List, Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from datetime import datetime, timedelta
 import structlog
 
-from app.models.database import *
+from app.models.database import (
+    Timer, TimerCreate, TimerUpdate, TimerResponse, TimerStatus
+)
 from app.core.database import get_db
 from app.core.logging import RequestLogger
 
@@ -16,7 +19,7 @@ router = APIRouter(prefix="/timers", tags=["timers"])
 @router.post("/run")
 async def run_scheduled_tasks(
     background_tasks: BackgroundTasks,
-    db = Depends(get_db),
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db),
     request_logger: RequestLogger = Depends()
 ) -> Dict[str, Any]:
     """Chạy scheduled tasks (được gọi bởi cron job)"""
@@ -37,7 +40,7 @@ async def run_scheduled_tasks(
                 # Mark timer as executed
                 await db.update_timer(timer.id, {
                     "status": TimerStatus.EXECUTED,
-                    "executed_at": current_time
+                    "completed_at": current_time
                 })
                 
             except Exception as e:
@@ -49,8 +52,8 @@ async def run_scheduled_tasks(
                 # Mark timer as failed
                 await db.update_timer(timer.id, {
                     "status": TimerStatus.FAILED,
-                    "executed_at": current_time,
-                    "metadata": {**timer.metadata, "error": str(e)}
+                    "completed_at": current_time,
+                    "payload": {**timer.payload, "error": str(e)}
                 })
         
         await request_logger.log_event(
@@ -77,22 +80,13 @@ async def run_scheduled_tasks(
 @router.post("/", response_model=TimerResponse)
 async def create_timer(
     request: TimerCreate,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> TimerResponse:
     """Tạo timer mới"""
     try:
         timer = await db.create_timer(request)
         
-        return TimerResponse(
-            id=timer.id,
-            user_id=timer.user_id,
-            conversation_id=timer.conversation_id,
-            timer_type=timer.timer_type,
-            scheduled_time=timer.scheduled_time,
-            status=timer.status,
-            created_at=timer.created_at,
-            metadata=timer.metadata
-        )
+        return TimerResponse.from_timer(timer)
         
     except Exception as e:
         logger.error("Failed to create timer", error=str(e))
@@ -104,26 +98,13 @@ async def get_user_timers(
     status: Optional[TimerStatus] = None,
     limit: int = 50,
     offset: int = 0,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> List[TimerResponse]:
     """Lấy timers của user"""
     try:
         timers = await db.get_user_timers(user_id, status, limit, offset)
         
-        return [
-            TimerResponse(
-                id=timer.id,
-                user_id=timer.user_id,
-                conversation_id=timer.conversation_id,
-                timer_type=timer.timer_type,
-                scheduled_time=timer.scheduled_time,
-                status=timer.status,
-                created_at=timer.created_at,
-                executed_at=timer.executed_at,
-                metadata=timer.metadata
-            )
-            for timer in timers
-        ]
+        return [TimerResponse.from_timer(timer) for timer in timers]
         
     except Exception as e:
         logger.error("Failed to get user timers", error=str(e))
@@ -133,7 +114,7 @@ async def get_user_timers(
 async def update_timer(
     timer_id: str,
     request: TimerUpdate,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> Dict[str, Any]:
     """Update timer"""
     try:
@@ -142,12 +123,12 @@ async def update_timer(
             raise HTTPException(status_code=404, detail="Timer not found")
         
         update_data = {}
-        if request.scheduled_time is not None:
-            update_data["scheduled_time"] = request.scheduled_time
+        if request.run_at is not None:
+            update_data["run_at"] = request.run_at
         if request.status is not None:
             update_data["status"] = request.status
-        if request.metadata is not None:
-            update_data["metadata"] = request.metadata
+        if request.payload is not None:
+            update_data["payload"] = request.payload
         
         updated_timer = await db.update_timer(timer_id, update_data)
         
@@ -166,7 +147,7 @@ async def update_timer(
 @router.delete("/{timer_id}")
 async def cancel_timer(
     timer_id: str,
-    db = Depends(get_db)
+    db: Annotated["DatabaseClient", Depends(get_db)] = Depends(get_db)
 ) -> Dict[str, Any]:
     """Cancel timer"""
     try:
@@ -179,7 +160,7 @@ async def cancel_timer(
         
         await db.update_timer(timer_id, {
             "status": TimerStatus.CANCELLED,
-            "executed_at": datetime.utcnow()
+            "completed_at": datetime.utcnow()
         })
         
         return {
@@ -210,6 +191,9 @@ async def execute_timer_task(timer_id: str):
         orchestrator = get_orchestrator()
         
         # Execute based on timer type
+        timer_type = timer.timer_type
+        payload = timer.payload
+        
         if timer.timer_type == TimerType.FOLLOWUP:
             await orchestrator.execute_followup_timer(timer)
         elif timer.timer_type == TimerType.REMINDER:

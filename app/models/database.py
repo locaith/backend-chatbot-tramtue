@@ -29,7 +29,9 @@ class AgentType(str, Enum):
 class TimerStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
+    EXECUTED = "executed"
     COMPLETED = "completed"
+    FAILED = "failed"
     CANCELLED = "cancelled"
 
 class HandoffReason(str, Enum):
@@ -241,6 +243,37 @@ class TimerCreate(BaseModel):
     run_at: datetime
     payload: Dict[str, Any] = Field(default_factory=dict)
     max_attempts: int = 3
+
+class TimerUpdate(BaseModel):
+    timer_type: Optional[str] = None
+    run_at: Optional[datetime] = None
+    status: Optional[TimerStatus] = None
+    payload: Optional[Dict[str, Any]] = None
+    max_attempts: Optional[int] = None
+
+class TimerResponse(BaseModel):
+    id: str
+    user_id: str
+    conversation_id: str
+    timer_type: str
+    scheduled_time: datetime  # Alias for run_at for API consistency
+    status: TimerStatus
+    created_at: datetime
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    
+    @classmethod
+    def from_timer(cls, timer: Timer) -> "TimerResponse":
+        """Convert Timer model to TimerResponse"""
+        return cls(
+            id=timer.id,
+            user_id=timer.user_id,
+            conversation_id=timer.conversation_id,
+            timer_type=timer.timer_type,
+            scheduled_time=timer.run_at,
+            status=timer.status,
+            created_at=timer.created_at,
+            metadata=timer.payload
+        )
 
 # Handoff Models
 class Handoff(BaseDBModel):

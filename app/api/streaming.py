@@ -12,7 +12,7 @@ import structlog
 from app.services.orchestrator import get_orchestrator
 from app.services.human_timing import get_timing_service
 from app.models.database import SendMessageRequest
-from app.dependencies import get_request_logger
+from app.core.logging import get_request_logger
 
 router = APIRouter(prefix="/streaming", tags=["streaming"])
 logger = structlog.get_logger()
