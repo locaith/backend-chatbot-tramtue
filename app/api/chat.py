@@ -1,7 +1,7 @@
 """
 Chat endpoints cho AI Agent
 """
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, TYPE_CHECKING
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 import structlog
@@ -9,7 +9,10 @@ import json
 import asyncio
 
 from app.models.database import *
-from app.core.database import get_db, DatabaseClient
+from app.core.database import get_db
+
+if TYPE_CHECKING:
+    from app.core.database import DatabaseClient
 from app.services.memory import get_memory_engine
 from app.services.discovery import DiscoveryAgent
 from app.services.orchestrator import get_orchestrator
@@ -66,7 +69,7 @@ async def create_conversation(
 async def send_message(
     conversation_id: str,
     request: SendMessageRequest,
-    db: DatabaseClient = Depends(get_db),
+    db = Depends(get_db),  # bỏ type annotation để tránh NameError runtime
     memory_engine = Depends(get_memory_engine),
     logger: RequestLogger = Depends()
 ):
